@@ -118,8 +118,8 @@ def calculate_velocity_signal(
     SELECT COUNT(*)
     FROM transactions
     WHERE account_id = ?
-      AND transaction_time >= ?
-      AND transaction_time <= ?;
+        AND julianday(transaction_time) >= julianday(?)
+        AND julianday(transaction_time) <= julianday(?);
     """
 
     cursor = conn.execute(
@@ -213,7 +213,7 @@ def calculate_dormant_account_signal(conn, transaction_id, threshold_days=180):
     SELECT transaction_time
     FROM transactions
     WHERE account_id = ?
-      AND transaction_time < ?
+      AND julianday(transaction_time) < julianday(?)
     ORDER BY transaction_time DESC
     LIMIT 1;
     """
@@ -283,8 +283,8 @@ def calculate_repeated_counterparty_signal(
     FROM transactions
     WHERE account_id = ?
       AND merchant_id = ?
-      AND transaction_time >= ?
-      AND transaction_time <= ?;
+      AND julianday(transaction_time) >= julianday(?)
+      AND julianday(transaction_time) <= julianday(?);
     """
 
     cursor = conn.execute(
@@ -342,8 +342,8 @@ def calculate_failed_payment_signal(
     FROM transactions
     WHERE account_id = ?
       AND status IN ('failed', 'declined')
-      AND transaction_time >= ?
-      AND transaction_time <= ?;
+      AND julianday(transaction_time) >= julianday(?)
+      AND julianday(transaction_time) <= julianday(?);
     """
 
     cursor = conn.execute(
@@ -399,8 +399,8 @@ def calculate_prior_chargeback_signal(
     SELECT COUNT(*)
     FROM chargebacks
     WHERE account_id = ?
-      AND chargeback_date >= ?
-      AND chargeback_date <= ?;
+        AND julianday(chargeback_date) >= julianday(?)
+        AND julianday(chargeback_date) < julianday(?);
     """
 
     cursor = conn.execute(
@@ -467,36 +467,43 @@ def calculate_all_risk_signals(conn, transaction_id):
 
 
 # test
-from database import create_connection
-
 if __name__ == "__main__":
-    conn = create_connection("data/fraud.db")
+    from pathlib import Path
 
-    # result_1 = calculate_account_age_signal(conn, "TXN_010")
-    # print(result_1)
-    # result_2 = calculate_account_age_signal(conn, "TXN_001")
-    # print(result_2)
+    from src.database import create_connection
 
-    # print(calculate_high_value_signal(conn, "TXN_010"))
-    # print(calculate_high_value_signal(conn, "TXN_001"))
+    project_root = Path(__file__).resolve().parent.parent
+    db_path = project_root / "data" / "fraud_synthetic.db"
 
-    # print(calculate_velocity_signal(conn, "TXN_010"))
-    # print(calculate_velocity_signal(conn, "TXN_001"))
+    if not db_path.is_file():
+        raise FileNotFoundError(f"Database not found: {db_path}")
 
-    # print(calculate_new_device_signal(conn, "TXN_010"))
-    # print(calculate_new_device_signal(conn, "TXN_001"))
+    conn = create_connection(str(db_path))
 
-    # print(calculate_dormant_account_signal(conn, "TXN_012"))
-    # print(calculate_dormant_account_signal(conn, "TXN_010"))
+    try:
+        transaction_ids = [
+            "TXN_001",
+            "TXN_010",
+            "TXN_004",
+            "TXN_017",
+        ]
 
-    # print(calculate_repeated_counterparty_signal(conn, "TXN_010"))
-    # print(calculate_repeated_counterparty_signal(conn, "TXN_001"))
+        for transaction_id in transaction_ids:
+            result = calculate_all_risk_signals(conn, transaction_id)
 
-    # print(calculate_failed_payment_signal(conn, "TXN_021"))
+            if result is None:
+                print(f"{transaction_id}: Transaction not found")
+                continue
 
-    # print(calculate_prior_chargeback_signal(conn, "TXN_017"))
+            print(f"\nTransaction: {transaction_id}")
+            print(f"Triggered signals: {result['triggered_signal_count']}")
 
-    print(calculate_all_risk_signals(conn, "TXN_012"))  # dormant account
-    print(calculate_all_risk_signals(conn, "TXN_017"))  # prior chargebacks
-
-    conn.close()
+            for signal in result["signals"]:
+                print(
+                    f"  {signal['signal_id']} "
+                    f"{signal['signal_name']}: "
+                    f"value={signal['feature_value']}, "
+                    f"triggered={signal['triggered']}"
+                )
+    finally:
+        conn.close()

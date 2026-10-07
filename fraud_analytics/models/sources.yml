@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: fraud_raw
+    database: FRAUD_DB
+    schema: RAW
+    tables:
+      - name: users
+        identifier: USERS
+      - name: transactions
+        identifier: TRANSACTIONS
+      - name: devices
+        identifier: DEVICES
+      - name: chargebacks
+        identifier: CHARGEBACKS

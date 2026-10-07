@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: stg_users
+    columns:
+      - name: account_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_transactions
+    columns:
+      - name: transaction_id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: account_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_users')
+                field: account_id
+
+      - name: device_id
+        data_tests:
+          - not_null
+
+  - name: stg_devices
+    columns:
+      - name: account_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_users')
+                field: account_id
+
+      - name: device_id
+        data_tests:
+          - not_null
+
+  - name: stg_chargebacks
+    columns:
+      - name: chargeback_id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: account_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_users')
+                field: account_id
+
+      - name: transaction_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_transactions')
+                field: transaction_id

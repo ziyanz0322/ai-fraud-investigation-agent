@@ -14,3 +14,29 @@ venv/
 
 # Local database
 data/*.db
+
+.venv-dbt/
+
+# Local environments and editor settings
+.venv-dbt/
+.venv/
+.vscode/
+__pycache__/
+*.pyc
+
+# Credentials
+.env
+.env.*
+!.env.example
+profiles.yml
+*.p8
+*.pem
+*.key
+
+# dbt generated files
+logs/
+target/
+dbt_packages/
+
+# Local databases and generated datasets
+data/
